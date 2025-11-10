@@ -1,4 +1,3 @@
-# Use official Node LTS image
 FROM mcr.microsoft.com/playwright:v1.56.1-noble
 
 # Set working directory
@@ -14,5 +13,5 @@ RUN npm ci
 COPY . .
 
 
-# Run Playwright tests on container start
-CMD ["npx", "playwright", "test", "--reporter=list"]
+# Run Playwright tests on container start.  Workers limit to 1 due to underpowered container environment.
+CMD ["npx", "playwright", "test", "--reporter=list", "--workers=1"]
