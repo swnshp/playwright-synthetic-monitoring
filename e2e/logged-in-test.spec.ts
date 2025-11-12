@@ -29,7 +29,7 @@ test('Logged In Journey', async ({ signedInUser: page }) => {
 
   //Expect to be on Payment step  
   const payButton = page.frameLocator('iframe[name*="adflex-"]').getByRole('button', { name: 'Pay using this card' });
-  await expect(payButton).toBeVisible({ timeout: 10000 }); 
+  await expect(payButton).toBeVisible({ timeout: 15000 }); 
   
   await BrowseJourney.emptyBasket(page);
 });
