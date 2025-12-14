@@ -9,9 +9,13 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
+RUN apt-get update && apt-get install -y curl zip
+
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
 # Copy the rest of the project
 COPY . .
 
 
 # Run Playwright tests on container start.  Workers limit to 1 due to underpowered container environment.
-CMD ["npx", "playwright", "test", "--reporter=list", "--workers=1"]
+CMD ["./run-test-and-upload-results.sh"]

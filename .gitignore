@@ -6,3 +6,4 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 .env
+playwright-report*.zip

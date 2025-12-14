@@ -31,7 +31,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        screenshot: 'only-on-failure',
+        trace: 'retain-on-failure'
+      },
     }
 
     /* Test against mobile viewports. */

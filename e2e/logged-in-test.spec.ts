@@ -1,7 +1,8 @@
 import { test, expect } from '../test-fixtures';
 import * as BrowseJourney from '../helpers/browse-journey';
 import {logger} from '../logger';
-import { log } from 'console';
+import { API_URLS } from '../config/urls';
+import { waitForApi } from '../utils/playwright-utils';
 
 test('Logged In Journey', async ({ signedInUser: page }) => {
 
@@ -22,9 +23,11 @@ test('Logged In Journey', async ({ signedInUser: page }) => {
   await expect(page.locator('div.basketInformationText')).toContainText('1 items in the basket');
 
   //Go to Checkout
+  const deliveryOptionsPromise = waitForApi(page, 'GET', API_URLS.getAvailabilityOptions);
   await BrowseJourney.checkout(page);
 
   //Select Delivery Option
+  await deliveryOptionsPromise;
   await BrowseJourney.selectFirstDeliveryOption(page);
 
   //Expect to be on Payment step  

@@ -1,6 +1,7 @@
-import { BrowserContext, Page, test as base, expect } from '@playwright/test';
+import { BrowserContext, Page, TestInfo, test as base, expect } from '@playwright/test';
 import { trackAvailabilityFromTestResult } from './appinsights';
 import {logger} from './logger';
+import { PAGE_URLS, API_URLS } from './config/urls';
 
 async function setupCookies(context: BrowserContext) {
     await context.addCookies([{
@@ -23,18 +24,21 @@ async function blockGoogleScripts(page: Page) {
 type Fixtures = {
   signedOutGuest: Page,
   signedInUser: Page,
+  trackAvailabilityFromTestResult : void
 };
 
 export const test = base.extend<Fixtures>({
-    signedOutGuest: async ({ browser }, use) => {
+    signedOutGuest: [async ({ browser }, use) => {
         const context = await browser.newContext({serviceWorkers: 'block'});
         const page = await context.newPage();
         await setupCookies(context);
         await blockGoogleScripts(page);
-        await page.goto('/');
+        await page.goto(PAGE_URLS.home);
         await page.getByRole('button', { name: 'Accept All', exact: true }).click();
         await use(page);
-    },
+        page.close();
+        context.close();
+    }, { timeout: 60000 }],
 
     signedInUser: [async ({ browser }, use) => {
         logger.debug('Starting Signed In User Fixture');
@@ -44,7 +48,7 @@ export const test = base.extend<Fixtures>({
         await blockGoogleScripts(page);
         await page.goto('/');
         await page.getByRole('button', { name: 'Accept All', exact: true }).click();
-        await page.getByRole('button', { name: 'My account' }).click();
+        await page.getByRole('button', { name: 'My account' }).or(page.getByRole('button', { name: 'Sign in'})).click();
         await page.getByTestId('account-popover').getByRole('link', { name: 'Sign in' }).click();
         await page.getByRole('textbox', { name: 'Email' }).fill(process.env.LOGGEDIN_USERNAME!);
         await page.getByRole('textbox', { name: 'Password' }).fill(process.env.LOGGEDIN_PASSWORD!);
@@ -53,16 +57,23 @@ export const test = base.extend<Fixtures>({
         await homePagePromise;
         logger.debug('Homepage Promise Fulfilled');
         await use(page);
-    }, { timeout: 60000 }]
+        page.close();
+        context.close();
+    }, { timeout: 60000 }],
+
+    trackAvailabilityFromTestResult: [async ({}, use, testInfo) => {
+        await use();
+        await trackAvailability(testInfo);
+    }, {auto: true}]
 });
 
-test.afterEach(async ({}, testInfo) => {
+async function trackAvailability(testInfo: TestInfo) {
   await trackAvailabilityFromTestResult(
     testInfo.title,
     testInfo.status === 'passed' ? 'pass' : 'fail',
     testInfo.duration,
     testInfo.error ? testInfo.error.message : undefined
   )
-});
+};
 
 export { expect };

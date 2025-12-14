@@ -1,5 +1,8 @@
 import { Page, expect } from '@playwright/test';
 import {logger} from '../logger';
+import { PAGE_URLS, API_URLS } from '../config/urls';
+import { ApiEndpointUrl } from '../types/api';
+import { waitForApi } from '../utils/playwright-utils';
 
 enum BasketState {
   CONTENTS,
@@ -17,27 +20,18 @@ export async function searchForItem(page: Page, searchTerm: string) {
 }
 
 export async function addItemToBasket(page: Page, productSlug: string, sizeLabel: string | undefined) {
-    await page.goto('/product/' + productSlug);
+    await page.goto(PAGE_URLS.productBase + productSlug);
     if (sizeLabel) {
         await page.locator('label').filter({ hasText: '9' }).click();
     }
     await page.getByRole('button', { name: 'Add to basket' }).click();
 }
 
-async function waitForBasketApiGet(page: Page) {
-  return page.waitForResponse(
-        response =>
-        response.url().endsWith('/api/basket/get') && response.status() === 200
-            && response.request().method() === 'GET'
-        , { timeout: 20000 }
-    );
-}
-
 export async function goToBasketFromAddToBasketModal(page: Page) {
     //Go to Basket     
-    const apiPromise = waitForBasketApiGet(page);
+    const apiPromise = waitForApi(page, 'GET', API_URLS.getBasket);
     await page.getByRole('link', { name: 'Go to basket' }).click();
-    await apiPromise
+    await apiPromise;
 }
 
 export async function guestCheckoutFromBasket(page:Page, guestEmail: string) {
@@ -62,19 +56,21 @@ export async function fillInAddressAndContactDuringCheckout(page: Page, postcode
 }
 
 export async function selectFirstDeliveryOption(page: Page) {
-    try {
+    try {        
         await page.locator('div.DeliveryOptions').getByRole('radio').first().check();    
     } catch (e) {
         // Until 412 issue is fixed, this will click retry in case the sequencing overlaps
         logger.warn('Error selecting delivery option, attempting retry (Suspect: 412 issue)');
-        await page.getByRole('button', { name: 'Retry' }).click();        
+        const apiPromise = waitForApi(page, 'GET', API_URLS.getAvailabilityOptions);
+        await page.getByRole('button', { name: 'Retry' }).click();    
+        await apiPromise;    
         await page.locator('div.DeliveryOptions').getByRole('radio').first().check();       
     }
     await page.getByRole('button', { name: 'Confirm delivery' }).click();
 }
 
 export async function emptyBasket(page: Page) {
-    const apiPromise = waitForBasketApiGet(page);
+    const apiPromise = waitForApi(page, 'GET', API_URLS.getBasket);
     await page.goto('/basket');    
     await apiPromise;
 
@@ -91,7 +87,7 @@ export async function emptyBasket(page: Page) {
         const items = await removeLinks.count();
         logger.debug(`Found ${items} items in basket to remove`);
         for (let i = 0; i < items; i++) {
-            const apiPromise = page.waitForResponse(resp => resp.url().includes('/api/basket/remove') && resp.status() === 200);
+            const apiPromise = waitForApi(page, 'POST', API_URLS.removeBasket);
             await removeLinks.first().click();
             await apiPromise
         }
