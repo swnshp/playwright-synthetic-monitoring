@@ -12,7 +12,7 @@ test('Logged In Journey', async ({ signedInUser: page }) => {
   logger.debug('Emptied Basket');
   //Go to the site and execute a search: expect results and products  
   await BrowseJourney.searchForItem(page, 'boot');
-  await expect(page.getByTestId('filter-facets').nth(0)).toBeVisible();
+  await expect(page.getByTestId('filter-facets-title-container').nth(0)).toBeVisible();
   await expect(page.getByTestId('sku-card').nth(23)).toBeVisible();
 
   //Go to a boot and expect to add to basket a specific size
@@ -31,7 +31,7 @@ test('Logged In Journey', async ({ signedInUser: page }) => {
   await BrowseJourney.selectFirstDeliveryOption(page);
 
   //Expect to be on Payment step  
-  const payButton = page.frameLocator('iframe[name*="adflex-"]').getByRole('button', { name: 'Pay using this card' });
+  const payButton = page.frameLocator('iframe[name*="adflex-"]').getByRole('button', { name: 'Place order and pay' });
   await expect(payButton).toBeVisible({ timeout: 15000 }); 
   
   await BrowseJourney.emptyBasket(page);

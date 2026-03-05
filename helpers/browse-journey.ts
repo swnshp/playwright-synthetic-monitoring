@@ -36,8 +36,7 @@ export async function goToBasketFromAddToBasketModal(page: Page) {
 
 export async function guestCheckoutFromBasket(page:Page, guestEmail: string) {
     await checkout(page);
-    await page.getByTestId('input-field-text').click();
-    await page.getByTestId('input-field-text').fill(guestEmail);
+    await page.getByRole('textbox', { name: 'Email' }).fill(guestEmail);
     await page.getByRole('button', { name: 'Checkout as guest' }).click();
 }
 
@@ -50,8 +49,13 @@ export async function fillInAddressAndContactDuringCheckout(page: Page, postcode
     await page.getByTestId('input-search-field').fill(postcode);
     await page.locator('ul.loqateInputList > li:nth-child(1) > button').click();
 
-    await page.getByRole('textbox', { name: 'Name*' }).fill(name);
-    await page.getByRole('textbox', { name: 'phone number*' }).fill(phoneNumber);
+    await expect(page.getByRole('textbox', { name: 'Address Line 1' })).not.toBeEmpty();
+    await expect(page.getByRole('textbox', { name: 'Town/City' })).not.toBeEmpty();
+    await expect(page.getByRole('textbox', { name: 'Postcode' })).not.toBeEmpty();
+
+    await page.getByRole('textbox', { name: 'First Name*' }).fill(name.split(' ')[0]);
+    await page.getByRole('textbox', { name: 'Last Name*' }).fill(name.split(' ')[1]);
+    await page.getByRole('textbox', { name: 'Phone number*' }).fill(phoneNumber);
     await page.getByRole('button', { name: 'Use this address' }).click();
 }
 
@@ -66,7 +70,14 @@ export async function selectFirstDeliveryOption(page: Page) {
         await apiPromise;    
         await page.locator('div.DeliveryOptions').getByRole('radio').first().check();       
     }
+    const updateDeliveryPromise = waitForApi(page, 'PUT', API_URLS.updateDeliveryOption, false);
     await page.getByRole('button', { name: 'Confirm delivery' }).click();
+    let response = await updateDeliveryPromise;
+    // Across the 2PM cut off, the front end is often submitting a date that is no longer valid, resulting in a 500 response
+    if (!response.ok()) {
+        logger.warn('Error selecting delivery option, attempting retry (Suspect: Wrong Date Issue)');
+        await page.getByRole('button', { name: 'Retry' }).click();  
+    }
 }
 
 export async function emptyBasket(page: Page) {

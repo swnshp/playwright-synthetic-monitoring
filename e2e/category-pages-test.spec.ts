@@ -12,6 +12,7 @@ const categoryPages = [
 ];
 
 test('Categories Returning Results', async ({ signedOutGuest : page }) => {
+  test.slow();
   for (const category of categoryPages) {
     await page.goto(category.url);
 

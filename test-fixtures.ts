@@ -2,6 +2,8 @@ import { BrowserContext, Page, TestInfo, test as base, expect } from '@playwrigh
 import { trackAvailabilityFromTestResult } from './appinsights';
 import {logger} from './logger';
 import { PAGE_URLS, API_URLS } from './config/urls';
+import { Cookie } from '@playwright/test';
+import { Browser } from '@playwright/test';
 
 async function setupCookies(context: BrowserContext) {
     await context.addCookies([{
@@ -22,32 +24,46 @@ async function blockGoogleScripts(page: Page) {
 }
 
 type Fixtures = {
+  appPage: Page,
+  migratedUser: Page,
+  migratedUserPage: Page,
+  trackAvailabilityFromTestResult: void,
   signedOutGuest: Page,
-  signedInUser: Page,
-  trackAvailabilityFromTestResult : void
+  signedInUser: Page
 };
 
 export const test = base.extend<Fixtures>({
-    signedOutGuest: [async ({ browser }, use) => {
-        const context = await browser.newContext({serviceWorkers: 'block'});
-        const page = await context.newPage();
-        await setupCookies(context);
-        await blockGoogleScripts(page);
-        await page.goto(PAGE_URLS.home);
-        await page.getByRole('button', { name: 'Accept All', exact: true }).click();
+    appPage: [async ({ browser }, use) => {
+        const page = await createPage(browser);
         await use(page);
-        page.close();
-        context.close();
+        await page.close();
+        await page.context().close();
     }, { timeout: 60000 }],
 
-    signedInUser: [async ({ browser }, use) => {
-        logger.debug('Starting Signed In User Fixture');
-        const context = await browser.newContext({serviceWorkers: 'block'});
-        const page = await context.newPage();
-        await setupCookies(context);
-        await blockGoogleScripts(page);
-        await page.goto('/');
-        await page.getByRole('button', { name: 'Accept All', exact: true }).click();
+    migratedUserPage: [async ({ browser }, use) => {
+        const page = await createPage(browser, PAGE_URLS.basket, [{
+            name: 'bv_basket',
+            value: process.env.BV_BASKET_COOKIE!,
+            domain: process.env.COOKIE_DOMAIN,
+            path: '/',
+            secure: true,
+            sameSite: 'None'
+        }]);
+        await use(page);
+        await page.close();
+        await page.context().close();
+    }, { timeout: 60000 }],
+
+    signedOutGuest: async ({ appPage }, use) => { 
+        await use(appPage);
+    },
+
+    migratedUser: async ({ migratedUserPage }, use) => {
+        await use(migratedUserPage);
+    },
+
+    signedInUser: async ({ appPage }, use) => {
+        const page = appPage;
         await page.getByRole('button', { name: 'My account' }).or(page.getByRole('button', { name: 'Sign in'})).click();
         await page.getByTestId('account-popover').getByRole('link', { name: 'Sign in' }).click();
         await page.getByRole('textbox', { name: 'Email' }).fill(process.env.LOGGEDIN_USERNAME!);
@@ -55,11 +71,8 @@ export const test = base.extend<Fixtures>({
         const homePagePromise = page.waitForURL(/\/\?state.*/, { waitUntil: 'domcontentloaded'});
         await page.getByRole('button', { name: 'Sign in' }).click();
         await homePagePromise;
-        logger.debug('Homepage Promise Fulfilled');
         await use(page);
-        page.close();
-        context.close();
-    }, { timeout: 60000 }],
+    },
 
     trackAvailabilityFromTestResult: [async ({}, use, testInfo) => {
         await use();
@@ -75,5 +88,18 @@ async function trackAvailability(testInfo: TestInfo) {
     testInfo.error ? testInfo.error.message : undefined
   )
 };
+
+async function createPage(browser: Browser, defaultPage: typeof PAGE_URLS[keyof typeof PAGE_URLS] = PAGE_URLS.home, additionalCookies : any[] = []) : Promise<Page> {
+    const context = await browser.newContext({serviceWorkers: 'block'});
+    const page = await context.newPage();
+    await setupCookies(context);
+    if (additionalCookies.length) {
+        await context.addCookies(additionalCookies);
+    }
+    await blockGoogleScripts(page);
+    await page.goto(defaultPage);
+    await page.getByRole('button', { name: 'Accept All', exact: true }).click();    
+    return page;
+}
 
 export { expect };
