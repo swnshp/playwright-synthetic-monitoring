@@ -34,7 +34,7 @@ stages:
         displayName: 'npm ci'
       - script: npx playwright install --with-deps
         displayName: 'Install Playwright browsers'
-      - script: npx playwright test --reporter=junit,html --output=test-results/e2e-junit-results.xml
+      - script: npx playwright test
         displayName: 'Run Playwright tests'
         env:
           LOGGEDIN_PASSWORD: $(LOGGEDIN_PASSWORD)
