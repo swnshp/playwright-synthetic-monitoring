@@ -1,6 +1,12 @@
 trigger:
 - main
 
+pr:
+- main
+
+variables:
+- group: Playwright Variables
+
 stages:
 - stage: WaitThenRunTests
   displayName: "Wait 1 minutes, then run Playwright"
@@ -28,8 +34,12 @@ stages:
         displayName: 'npm ci'
       - script: npx playwright install --with-deps
         displayName: 'Install Playwright browsers'
-      - script: npx playwright test --reporter=junit --output=test-results/e2e-junit-results.xml
+      - script: npx playwright test --reporter=junit,html --output=test-results/e2e-junit-results.xml
         displayName: 'Run Playwright tests'
+        env:
+          LOGGEDIN_PASSWORD: $(LOGGEDIN_PASSWORD)
+          APPINSIGHTS_CONNECTION_STRING: $(APPINSIGHTS_CONNECTION_STRING)
+          AZURE_STORAGE_KEY: $(AZURE_STORAGE_KEY)
 
       - task: PublishTestResults@2
         displayName: 'Publish test results'
