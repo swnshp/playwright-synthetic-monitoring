@@ -3,15 +3,15 @@ trigger:
 
 stages:
 - stage: WaitThenRunTests
-  displayName: "Wait 10 minutes, then run Playwright"
+  displayName: "Wait 1 minutes, then run Playwright"
   jobs:
   - job: WaitJob
-    displayName: "Delay 10 minutes (agentless)"
+    displayName: "Delay 1 minutes (agentless)"
     pool: server
     steps:
       - task: Delay@1
         inputs:
-          delayForMinutes: '10'
+          delayForMinutes: '1'
 
   - job: PlaywrightTests
     displayName: "Run Playwright Tests"
